@@ -244,7 +244,7 @@ def get_anime_info(anime_url, **kwargs):
     popularity = int(soup.find("span", string="Popularity:").next_sibling.string.strip()[1:])
     favorites = int(soup.find("span", string="Favorites:").next_sibling.string.strip().replace(',', ''))
     total_members = int(soup.find("span", string="Members:").next_sibling.string.strip().replace(',', ''))
-    weighted_score = float(soup.find("span", itemprop="ratingValue").string.strip())
+    weighted_score = float(soup.find("span", string="Score:").next_sibling.next_sibling.string.strip())
 
     stats_page = get_html(anime_url + STATS_PAGE_URL, delay, max_retries, retry_pause)
     print(f"Processing data from {anime_url}.")
