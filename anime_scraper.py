@@ -1,23 +1,94 @@
+import argparse
 import csv
 import re
 from dataclasses import dataclass
+from datetime import date
 from time import sleep
 
 import requests
 from bs4 import BeautifulSoup
 
 MAL_ANIME_SEARCH_URL = "https://myanimelist.net/anime.php"
-QUERY_PARAMS = "?q=&type=1&score=0&status=0&p=0&r=0&sm=1&sd=1&sy=2010&em=0&ed=0&ey=0&c[0]=a&c[1]=b&c[2]=c&c[3]=f"
-SORT_BY_SCORE_DESC_PARAM = "&o=3&w=1"
-SORT_BY_MEMBERS_DESC_PARAM = "&o=7&w=1"
-PAGE_PARAM = "&show="
+QUERY_PARAM = "?q="
+
+ANIME_TYPE_PARAM = "&type="
+ANIME_TYPE_OPTS = {
+    "tv":      1,
+    "ova":     2,
+    "movie":   3,
+    "special": 4,
+    "ona":     5,
+    "music":   6
+}
+
+ANIME_SCORE_PARAM = "&score="
+ANIME_SCORE_OPTS = {
+    "10": 10,
+    "9":   9,
+    "8":   8,
+    "7":   7,
+    "6":   6,
+    "5":   5,
+    "4":   4,
+    "3":   3,
+    "2":   2,
+    "1":   1
+}
+
+ANIME_STATUS_PARAM = "&status="
+ANIME_STATUS_OPTS = {
+    "current":  1,
+    "finished": 2,
+    "nya":      3
+}
+
+ANIME_RATING_PARAM = "&r="
+ANIME_RATING_OPTS = {
+    "g":     1,
+    "pg":    2,
+    "pg-13": 3,
+    "r":     4,
+    "r+":    5,
+    "rx":    6
+}
+
+ANIME_START_DAY_PARAM = "&sd="
+ANIME_START_MONTH_PARAM = "&sm="
+ANIME_START_YEAR_PARAM = "&sy="
+
+ANIME_END_DAY_PARAM = "&ed="
+ANIME_END_MONTH_PARAM = "&em="
+ANIME_END_YEAR_PARAM = "&ey="
+
+ANIME_SORT_BY_PARAM = "&o="
+ANIME_SORT_BY_OPTS = {
+    "alphabetical": 1,
+    "type":         6,
+    "episodes":     4,
+    "score":        3,
+    "start-date":   2,
+    "end-date":     5,
+    "members":      7,
+    "rating":       8
+}
+
+ANIME_SORT_ORDER_PARAM = "&w="
+ANIME_SORT_ORDER_OPTS = {
+    "DESC": 1,
+    "ASC": 2
+}
+
+SEARCH_PAGE_PARAM = "&show="
+
 STATS_PAGE_URL = "/stats"
-CSV_FILENAME = "MAL_anime.csv"
+
 ANIME_PER_PAGE = 50
-MAX_PAGES_SEARCH = 5
-MAX_REQUEST_RETRIES = 10
-RETRY_PAUSE = 6
-REQUEST_DELAY = 2
+
+DEFAULT_OUTPUT_FILE = f"MAL_anime_{ date.today() }.csv"
+DEFAULT_MAX_SEARCH = 100
+DEFAULT_MAX_RETRIES = 5
+DEFAULT_RETRY_PAUSE = 5
+DEFAULT_REQUEST_DELAY = 2
 
 
 @dataclass
@@ -51,14 +122,14 @@ class AnimeInfo:
     members_plan_to_watch: int
 
 
-def get_html(url):
-    sleep(REQUEST_DELAY)
+def get_html(url, delay=DEFAULT_REQUEST_DELAY, max_retries=DEFAULT_MAX_RETRIES, retry_pause=DEFAULT_RETRY_PAUSE):
+    sleep(delay)
     print("Sending GET request to: " + url)
     response = requests.get(url)
     retries = 0
-    while response.status_code == 429 and retries < MAX_REQUEST_RETRIES:
-        print(f"Received Too Many Requests Error. Retrying in {RETRY_PAUSE} seconds.")
-        sleep(RETRY_PAUSE)
+    while response.status_code == 429 and retries < max_retries:
+        print(f"Received Too Many Requests Error. Retrying in {retry_pause} seconds.")
+        sleep(retry_pause)
         response = requests.get(url)
         retries += 1
     if response.status_code != 200:
@@ -79,36 +150,63 @@ def get_anime_urls_from_page(html):
     return anime_urls
 
 
-def get_anime_urls():
+def construct_search_url(**kwargs):
+    url = [MAL_ANIME_SEARCH_URL]
+    if len(kwargs) > 0:
+        url.append(QUERY_PARAM)
+    if kwargs["search"]:
+        url.append("+".join(kwargs["search"].strip().lower().split()))
+    if kwargs["type"]:
+        url.append(ANIME_TYPE_PARAM + str(ANIME_TYPE_OPTS[kwargs["type"]]))
+    if kwargs["score"]:
+        url.append(ANIME_SCORE_PARAM + str(ANIME_SCORE_OPTS[kwargs["score"]]))
+    if kwargs["status"]:
+        url.append(ANIME_STATUS_PARAM + str(ANIME_STATUS_OPTS[kwargs["status"]]))
+    if kwargs["rating"]:
+        url.append(ANIME_RATING_PARAM + str(ANIME_RATING_OPTS[kwargs["rating"]]))
+    if kwargs["start_date"]:
+        start_date = kwargs["start_date"]
+        url.append(ANIME_START_YEAR_PARAM + str(start_date.year))
+        url.append(ANIME_START_MONTH_PARAM + str(start_date.month))
+        url.append(ANIME_START_DAY_PARAM + str(start_date.day))
+    if kwargs["end_date"]:
+        end_date = kwargs["end_date"]
+        url.append(ANIME_START_YEAR_PARAM + str(end_date.year))
+        url.append(ANIME_START_MONTH_PARAM + str(end_date.month))
+        url.append(ANIME_START_DAY_PARAM + str(end_date.day))
+    if kwargs["order_by"]:
+        url.append(ANIME_SORT_BY_PARAM + str(ANIME_SORT_BY_OPTS[kwargs["order_by"]]))
+    if kwargs["order"]:
+        url.append(ANIME_SORT_ORDER_PARAM + str(ANIME_SORT_ORDER_OPTS[kwargs["order"]]))
+
+    return "".join(url)
+
+
+def get_anime_urls(**kwargs):
     print("Retrieving individual Anime page URLs.")
-    anime_urls = set()
-    by_score_url = MAL_ANIME_SEARCH_URL + QUERY_PARAMS + SORT_BY_SCORE_DESC_PARAM
-    by_members_url = MAL_ANIME_SEARCH_URL + QUERY_PARAMS + SORT_BY_MEMBERS_DESC_PARAM
+    anime_urls = []
+    max_urls = kwargs["max"]
+    delay = kwargs["delay"]
+    max_retries = kwargs["retries"]
+    retry_pause = kwargs["retry_pause"]
+    search_url = construct_search_url(**kwargs)
 
-    for p in range(0, ANIME_PER_PAGE * MAX_PAGES_SEARCH, ANIME_PER_PAGE):
-        by_score_page = get_html(by_score_url + PAGE_PARAM + str(p))
-        if by_score_page is None:
-            print(f"Failed to retrieve page {(p // ANIME_PER_PAGE) + 1} of Anime By Score." +
-                  f"Returning {len(anime_urls)} found URLs.")
-            return anime_urls
-        prev_urls = len(anime_urls)
-        anime_urls.update(get_anime_urls_from_page(by_score_page))
-        print(f"Added {len(anime_urls) - prev_urls} URLs from page {(p // ANIME_PER_PAGE) + 1} of Anime By Score.")
+    while len(anime_urls) < max_urls:
+        new_search_url = search_url + SEARCH_PAGE_PARAM + str()
+        search_page = get_html(new_search_url, delay, max_retries, retry_pause)
+        anime_urls.extend(get_anime_urls_from_page(search_page))
+        print(f"Added {ANIME_PER_PAGE} URLs.")
 
-        by_members_page = get_html(by_members_url + PAGE_PARAM + str(p))
-        if by_members_page is None:
-            print(f"Failed to retrieve page {(p // ANIME_PER_PAGE) + 1} of Anime By Members." +
-                  f"Returning {len(anime_urls)} found URLs.")
-            return anime_urls
-        prev_urls = len(anime_urls)
-        anime_urls.update(get_anime_urls_from_page(by_members_page))
-        print(f"Added {len(anime_urls) - prev_urls} URLs from page {(p // ANIME_PER_PAGE) + 1} of Anime By Members.")
+    anime_urls = anime_urls[:max_urls]
     print(f"Found total of {len(anime_urls)} Anime URLs.")
     return anime_urls
 
 
-def get_anime_info(anime_url):
-    anime_page = get_html(anime_url)
+def get_anime_info(anime_url, **kwargs):
+    delay = kwargs["delay"]
+    max_retries = kwargs["retries"]
+    retry_pause = kwargs["retry_pause"]
+    anime_page = get_html(anime_url, delay, max_retries, retry_pause)
     print(f"Processing data from {anime_url}.")
     soup = BeautifulSoup(anime_page, "html.parser")
     title = soup.find("span", itemprop="name").string.strip()
@@ -123,7 +221,7 @@ def get_anime_info(anime_url):
     favorites = int(soup.find("span", string="Favorites:").next_sibling.string.strip().replace(',', ''))
     total_members = int(soup.find("span", string="Members:").next_sibling.string.strip().replace(',', ''))
     weighted_score = float(soup.find("span", itemprop="ratingValue").string.strip())
-    stats_page = get_html(anime_url + STATS_PAGE_URL)
+    stats_page = get_html(anime_url + STATS_PAGE_URL, delay, max_retries, retry_pause)
     print(f"Processing data from {anime_url}.")
     soup = BeautifulSoup(stats_page, "html.parser")
     watching = int(soup.find("span", string="Watching:").next_sibling.string.strip().replace(',', ''))
@@ -148,9 +246,9 @@ def get_anime_info(anime_url):
                      scores_4, scores_3, scores_2, scores_1, watching, completed, on_hold, dropped, plan_to_watch)
 
 
-def export_to_csv(anime_info_list):
+def export_to_csv(anime_info_list, filename):
     print("Exporting retrieved Anime data to CSV file.")
-    with open(CSV_FILENAME, "w", newline='', encoding='utf-8') as csv_file:
+    with open(filename, "w", newline='', encoding='utf-8') as csv_file:
         writer = csv.writer(csv_file)
         writer.writerow(['Title', 'Episodes', 'Premiered', 'Broadcast', 'Studios', 'Source', 'Genres', 'Ranked',
                          'Popularity', 'Favorites', 'Total Members', 'Weighted Score', '10 Scores', '9 Scores',
@@ -164,21 +262,46 @@ def export_to_csv(anime_info_list):
                              anime.scores_6, anime.scores_5, anime.scores_4, anime.scores_3, anime.scores_2,
                              anime.scores_1, anime.members_watching, anime.members_completed, anime.members_on_hold,
                              anime.members_dropped, anime.members_plan_to_watch])
-    print(f"Data saved to '{CSV_FILENAME}'.")
+    print(f"Data saved to '{filename}'.")
+
+
+def get_args():
+    parser = argparse.ArgumentParser(description="Download Anime info from MyAnimeList.")
+    search_opts = parser.add_argument_group("Search Options")
+    search_opts.add_argument("-o", "--output", default=DEFAULT_OUTPUT_FILE)
+    search_opts.add_argument("-s", "--search")
+    search_opts.add_argument("--max", type=int, default=DEFAULT_MAX_SEARCH)
+    search_opts.add_argument("--type", choices=ANIME_TYPE_OPTS.keys())
+    search_opts.add_argument("--score", choices=ANIME_SCORE_OPTS.keys())
+    search_opts.add_argument("--status", choices=ANIME_STATUS_OPTS.keys())
+    search_opts.add_argument("--rating", choices=ANIME_RATING_OPTS.keys())
+    search_opts.add_argument("--start-date", type=lambda s: date.fromisoformat(s))
+    search_opts.add_argument("--end-date", type=lambda s: date.fromisoformat(s))
+    search_opts.add_argument("--order-by", choices=ANIME_SORT_BY_OPTS.keys())
+    search_opts.add_argument("--order", choices=ANIME_SORT_ORDER_OPTS.keys())
+    request_opts = parser.add_argument_group("Request Options")
+    request_opts.add_argument("--retries", type=int, default=DEFAULT_MAX_RETRIES)
+    request_opts.add_argument("--retry-pause", type=int, default=DEFAULT_RETRY_PAUSE)
+    request_opts.add_argument("--delay", type=int, default=DEFAULT_REQUEST_DELAY)
+    # parser.print_help()
+    # parser.print_usage()
+    args = parser.parse_args()
+    return vars(args)
 
 
 def main():
+    args = get_args()
     print("Starting MAL Anime scraping.")
-    anime_urls = get_anime_urls()
+    anime_urls = get_anime_urls(**args)
     anime_info_list = []
     total_anime = len(anime_urls)
     counter = 1
     for url in anime_urls:
         print(f"Getting info for Anime #{counter} of {total_anime}.")
-        anime_info = get_anime_info(url)
+        anime_info = get_anime_info(url, **args)
         anime_info_list.append(anime_info)
         counter += 1
-    export_to_csv(anime_info_list)
+    export_to_csv(anime_info_list, args["output"])
     print("MAL Anime scraping completed.")
 
 
