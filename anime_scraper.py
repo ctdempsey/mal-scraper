@@ -94,12 +94,19 @@ DEFAULT_REQUEST_DELAY = 2
 @dataclass
 class AnimeInfo:
     title: str
+    anime_type: str
     episodes: int
+    status: str
+    aired: str
     premiered: str
     broadcast: str
+    producers: str
+    licensors: str
     studios: str
     source: str
     genres: str
+    duration: str
+    rating: str
     ranked: int
     popularity: int
     favorites: int
@@ -214,23 +221,36 @@ def get_anime_info(anime_url, **kwargs):
     delay = kwargs["delay"]
     max_retries = kwargs["retries"]
     retry_pause = kwargs["retry_pause"]
+
     anime_page = get_html(anime_url, delay, max_retries, retry_pause)
     print(f"Processing data from {anime_url}.")
+
     soup = BeautifulSoup(anime_page, "html.parser")
     title = soup.find("span", itemprop="name").string.strip()
+    anime_type = soup.find("span", string="Type:").parent.a.string.strip()
     episodes = soup.find("span", string="Episodes:").next_sibling.string.strip()
+    status = soup.find("span", string="Status:").next_sibling.string.strip()
+    aired = soup.find("span", string="Aired:").next_sibling.string.strip()
     premiered = soup.find("span", string="Premiered:").parent.a.string.strip()
     broadcast = soup.find("span", string="Broadcast:").next_sibling.string.strip()
+    producers = ', '.join([s.string.strip() for s in soup.find("span", string="Producers:").parent.find_all("a")])
+    licensors = ', '.join([s.string.strip() for s in soup.find("span", string="Licensors:").parent.find_all("a")])
+    if licensors == "add some":
+        licensors = "None"
     studios = ', '.join([s.string.strip() for s in soup.find("span", string="Studios:").parent.find_all("a")])
     source = soup.find("span", string="Source:").next_sibling.string.strip()
     genres = ', '.join([g.string.strip() for g in soup.find_all("span", itemprop="genre")])
+    duration = soup.find("span", string="Duration:").next_sibling.string.strip()
+    rating = soup.find("span", string="Rating:").next_sibling.string.strip()
     ranked = int(soup.find("span", string="Ranked:").next_sibling.string.strip()[1:])
     popularity = int(soup.find("span", string="Popularity:").next_sibling.string.strip()[1:])
     favorites = int(soup.find("span", string="Favorites:").next_sibling.string.strip().replace(',', ''))
     total_members = int(soup.find("span", string="Members:").next_sibling.string.strip().replace(',', ''))
     weighted_score = float(soup.find("span", itemprop="ratingValue").string.strip())
+
     stats_page = get_html(anime_url + STATS_PAGE_URL, delay, max_retries, retry_pause)
     print(f"Processing data from {anime_url}.")
+
     soup = BeautifulSoup(stats_page, "html.parser")
     watching = int(soup.find("span", string="Watching:").next_sibling.string.strip().replace(',', ''))
     completed = int(soup.find("span", string="Completed:").next_sibling.string.strip().replace(',', ''))
@@ -248,8 +268,10 @@ def get_anime_info(anime_url, **kwargs):
     scores_3 = int(scores[7].string.strip()[1:-7])
     scores_2 = int(scores[8].string.strip()[1:-7])
     scores_1 = int(scores[9].string.strip()[1:-7])
+
     print(f"Extracted data for {title}.")
-    return AnimeInfo(title, episodes, premiered, broadcast, studios, source, genres, ranked, popularity, favorites,
+    return AnimeInfo(title, anime_type, episodes, status, aired, premiered, broadcast, producers, licensors, studios,
+                     source, genres, duration, rating, ranked, popularity, favorites,
                      total_members, weighted_score, scores_10, scores_9, scores_8, scores_7, scores_6, scores_5,
                      scores_4, scores_3, scores_2, scores_1, watching, completed, on_hold, dropped, plan_to_watch)
 
@@ -258,18 +280,21 @@ def export_to_csv(anime_info_list, filename):
     print("Exporting retrieved Anime data to CSV file.")
     with open(filename, "w", newline='', encoding='utf-8') as csv_file:
         writer = csv.writer(csv_file)
-        writer.writerow(['Title', 'Episodes', 'Premiered', 'Broadcast', 'Studios', 'Source', 'Genres', 'Ranked',
+        writer.writerow(['Title', 'Type', 'Episodes', 'Status', 'Aired', 'Premiered', 'Broadcast', 'Producers',
+                         'Licensors', 'Studios', 'Source', 'Genres', 'Duration', 'Rating', 'Ranked',
                          'Popularity', 'Favorites', 'Total Members', 'Weighted Score', '10 Scores', '9 Scores',
                          '8 Scores', '7 Scores', '6 Scores', '5 Scores', '4 Scores', '3 Scores', '2 Scores',
                          '1 Scores', 'Members Watching', 'Members Completed', 'Members On-Hold', 'Members Dropped',
                          'Members Plan to Watch'])
         for anime in anime_info_list:
-            writer.writerow([anime.title, anime.episodes, anime.premiered, anime.broadcast, anime.studios, anime.source,
-                             anime.genres, anime.ranked, anime.popularity, anime.favorites, anime.total_members,
-                             anime.weighted_score, anime.scores_10, anime.scores_9, anime.scores_8, anime.scores_7,
-                             anime.scores_6, anime.scores_5, anime.scores_4, anime.scores_3, anime.scores_2,
-                             anime.scores_1, anime.members_watching, anime.members_completed, anime.members_on_hold,
-                             anime.members_dropped, anime.members_plan_to_watch])
+            writer.writerow([anime.title, anime.anime_type, anime.episodes, anime.status, anime.aired, anime.premiered,
+                             anime.broadcast, anime.producers, anime.licensors, anime.studios, anime.source,
+                             anime.genres, anime.duration, anime.rating, anime.ranked, anime.popularity,
+                             anime.favorites, anime.total_members, anime.weighted_score, anime.scores_10,
+                             anime.scores_9, anime.scores_8, anime.scores_7, anime.scores_6, anime.scores_5,
+                             anime.scores_4, anime.scores_3, anime.scores_2, anime.scores_1, anime.members_watching,
+                             anime.members_completed, anime.members_on_hold, anime.members_dropped,
+                             anime.members_plan_to_watch])
     print(f"Data saved to '{filename}'.")
 
 
