@@ -324,12 +324,17 @@ def main():
     anime_info_list = []
     total_anime = len(anime_urls)
     counter = 1
-    for url in anime_urls:
-        print(f"Getting info for Anime #{counter} of {total_anime}.")
-        anime_info = get_anime_info(url, **args)
-        anime_info_list.append(anime_info)
-        counter += 1
-    export_to_csv(anime_info_list, args["output"])
+    try:
+        for url in anime_urls:
+            print(f"Getting info for Anime #{counter} of {total_anime}.")
+            anime_info = get_anime_info(url, **args)
+            anime_info_list.append(anime_info)
+            counter += 1
+        print("All requested Anime info has been retrieved..")
+    except (KeyboardInterrupt, SystemExit):
+        print("Exiting early. Saving completed work.")
+    finally:
+        export_to_csv(anime_info_list, args["output"])
     print("MAL Anime scraping completed.")
 
 
