@@ -191,6 +191,8 @@ def get_anime_urls(**kwargs):
     print("Retrieving individual Anime page URLs.")
     anime_urls = []
     max_urls = kwargs["max"]
+    if max_urls == 0:
+        max_urls = float('inf')
     delay = kwargs["delay"]
     max_retries = kwargs["retries"]
     retry_pause = kwargs["retry_pause"]
@@ -207,7 +209,8 @@ def get_anime_urls(**kwargs):
         anime_urls.extend(results)
         print(f"Found {len(anime_urls) - prev_urls} URLs.")
 
-    anime_urls = anime_urls[:max_urls]
+    if kwargs["max"] != 0:
+        anime_urls = anime_urls[:max_urls]
     print(f"Returning total of {len(anime_urls)} Anime URLs.")
     return anime_urls
 
