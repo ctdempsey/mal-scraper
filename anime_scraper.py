@@ -141,7 +141,10 @@ def get_html(url, delay=DEFAULT_REQUEST_DELAY, max_retries=DEFAULT_MAX_RETRIES, 
 
 def get_anime_urls_from_page(html):
     soup = BeautifulSoup(html, "html.parser")
-    anime_table = soup.find("div", "js-block-list").table
+    anime_list = soup.find("div", "js-block-list")
+    if anime_list is None:
+        return []
+    anime_table = anime_list.table
     anime_rows = anime_table.contents[1:]
     anime_urls = []
     for anime in anime_rows:
@@ -195,7 +198,11 @@ def get_anime_urls(**kwargs):
         new_search_url = search_url + SEARCH_PAGE_PARAM + str(len(anime_urls))
         search_page = get_html(new_search_url, delay, max_retries, retry_pause)
         prev_urls = len(anime_urls)
-        anime_urls.extend(get_anime_urls_from_page(search_page))
+        results = get_anime_urls_from_page(search_page)
+        if len(results) == 0:
+            print("No new URLs found.")
+            break
+        anime_urls.extend(results)
         print(f"Found {len(anime_urls) - prev_urls} URLs.")
 
     anime_urls = anime_urls[:max_urls]
