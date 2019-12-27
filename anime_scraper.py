@@ -189,16 +189,17 @@ def get_anime_urls(**kwargs):
     delay = kwargs["delay"]
     max_retries = kwargs["retries"]
     retry_pause = kwargs["retry_pause"]
-    search_url = construct_search_url(**kwargs)
 
+    search_url = construct_search_url(**kwargs)
     while len(anime_urls) < max_urls:
-        new_search_url = search_url + SEARCH_PAGE_PARAM + str()
+        new_search_url = search_url + SEARCH_PAGE_PARAM + str(len(anime_urls))
         search_page = get_html(new_search_url, delay, max_retries, retry_pause)
+        prev_urls = len(anime_urls)
         anime_urls.extend(get_anime_urls_from_page(search_page))
-        print(f"Added {ANIME_PER_PAGE} URLs.")
+        print(f"Found {len(anime_urls) - prev_urls} URLs.")
 
     anime_urls = anime_urls[:max_urls]
-    print(f"Found total of {len(anime_urls)} Anime URLs.")
+    print(f"Returning total of {len(anime_urls)} Anime URLs.")
     return anime_urls
 
 
