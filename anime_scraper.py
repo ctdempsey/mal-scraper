@@ -1,6 +1,8 @@
 import argparse
 import csv
 import re
+import urllib3
+import certifi
 from dataclasses import dataclass
 from datetime import date
 from time import sleep
@@ -87,7 +89,7 @@ ANIME_PER_PAGE = 50
 DEFAULT_OUTPUT_FILE = f"MAL_anime_{ date.today() }.csv"
 DEFAULT_MAX_SEARCH = 100
 DEFAULT_MAX_RETRIES = 5
-DEFAULT_RETRY_PAUSE = 5
+DEFAULT_RETRY_PAUSE = 0.5
 DEFAULT_REQUEST_DELAY = 2
 
 
@@ -132,18 +134,11 @@ class AnimeInfo:
 def get_html(url, delay=DEFAULT_REQUEST_DELAY, max_retries=DEFAULT_MAX_RETRIES, retry_pause=DEFAULT_RETRY_PAUSE):
     sleep(delay)
     print("Sending GET request to: " + url)
-    response = requests.get(url)
-    retries = 0
-    while response.status_code == 429 and retries < max_retries:
-        print(f"Received Too Many Requests Error. Retrying in {retry_pause} seconds.")
-        sleep(retry_pause)
-        response = requests.get(url)
-        retries += 1
-    if response.status_code != 200:
-        print(f"Received Status Code {response.status_code}.")
-        raise Exception("Couldn't get data")
+    http = urllib3.PoolManager(cert_reqs='CERT_REQUIRED', ca_certs=certifi.where(),
+                               retries=urllib3.Retry(total=max_retries, backoff_factor=retry_pause))
+    response = http.request('GET', url)
     print("GET request completed.")
-    return response.text
+    return response.data.decode('utf-8')
 
 
 def get_anime_urls_from_page(html):
@@ -314,7 +309,7 @@ def get_args():
     search_opts.add_argument("--order", choices=ANIME_SORT_ORDER_OPTS.keys())
     request_opts = parser.add_argument_group("Request Options")
     request_opts.add_argument("--retries", type=int, default=DEFAULT_MAX_RETRIES)
-    request_opts.add_argument("--retry-pause", type=int, default=DEFAULT_RETRY_PAUSE)
+    request_opts.add_argument("--retry-pause", type=float, default=DEFAULT_RETRY_PAUSE)
     request_opts.add_argument("--delay", type=int, default=DEFAULT_REQUEST_DELAY)
     # parser.print_help()
     # parser.print_usage()
