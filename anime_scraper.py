@@ -255,17 +255,22 @@ def get_anime_info(anime_url, **kwargs):
     on_hold = int(soup.find("span", string="On-Hold:").next_sibling.string.strip().replace(',', ''))
     dropped = int(soup.find("span", string="Dropped:").next_sibling.string.strip().replace(',', ''))
     plan_to_watch = int(soup.find("span", string="Plan to Watch:").next_sibling.string.strip().replace(',', ''))
-    scores = soup.find_all("small", string=re.compile(r'votes'))
-    scores_10 = int(scores[0].string.strip()[1:-7])
-    scores_9 = int(scores[1].string.strip()[1:-7])
-    scores_8 = int(scores[2].string.strip()[1:-7])
-    scores_7 = int(scores[3].string.strip()[1:-7])
-    scores_6 = int(scores[4].string.strip()[1:-7])
-    scores_5 = int(scores[5].string.strip()[1:-7])
-    scores_4 = int(scores[6].string.strip()[1:-7])
-    scores_3 = int(scores[7].string.strip()[1:-7])
-    scores_2 = int(scores[8].string.strip()[1:-7])
-    scores_1 = int(scores[9].string.strip()[1:-7])
+
+    def get_score(soup1, number):
+        element = soup1.find("td", width="20", string=str(number))
+        return int(element.parent.find("small", string=re.compile(r'votes')).string.strip()[1:-7]) \
+            if element is not None else 0
+
+    scores_10 = get_score(soup, 10)
+    scores_9 = get_score(soup, 9)
+    scores_8 = get_score(soup, 8)
+    scores_7 = get_score(soup, 7)
+    scores_6 = get_score(soup, 6)
+    scores_5 = get_score(soup, 5)
+    scores_4 = get_score(soup, 4)
+    scores_3 = get_score(soup, 3)
+    scores_2 = get_score(soup, 2)
+    scores_1 = get_score(soup, 1)
 
     print(f"Extracted data for {title}.")
     return AnimeInfo(title, anime_type, episodes, status, aired, premiered, broadcast, producers, licensors, studios,
