@@ -1,6 +1,8 @@
 import argparse
 import csv
 import re
+from math import isnan
+
 import urllib3
 import certifi
 from dataclasses import dataclass
@@ -229,7 +231,11 @@ def get_anime_info(anime_url, **kwargs):
     episodes = soup.find("span", string="Episodes:").next_sibling.string.strip()
     status = soup.find("span", string="Status:").next_sibling.string.strip()
     aired = soup.find("span", string="Aired:").next_sibling.string.strip()
-    premiered = soup.find("span", string="Premiered:").parent.a.string.strip()
+    premiered = soup.find("span", string="Premiered:").parent.a
+    if premiered is None:
+        premiered = "?"
+    else:
+        premiered = premiered.string.strip()
     broadcast = soup.find("span", string="Broadcast:").next_sibling.string.strip()
     producers = ', '.join([s.string.strip() for s in soup.find("span", string="Producers:").parent.find_all("a")])
     licensors = ', '.join([s.string.strip() for s in soup.find("span", string="Licensors:").parent.find_all("a")])
@@ -240,11 +246,19 @@ def get_anime_info(anime_url, **kwargs):
     genres = ', '.join([g.string.strip() for g in soup.find_all("span", itemprop="genre")])
     duration = soup.find("span", string="Duration:").next_sibling.string.strip()
     rating = soup.find("span", string="Rating:").next_sibling.string.strip()
-    ranked = int(soup.find("span", string="Ranked:").next_sibling.string.strip()[1:])
+    ranked = soup.find("span", string="Ranked:").next_sibling.string.strip()
+    if ranked == "N/A":
+        ranked = float("nan")
+    else:
+        ranked = int(ranked[1:])
     popularity = int(soup.find("span", string="Popularity:").next_sibling.string.strip()[1:])
     favorites = int(soup.find("span", string="Favorites:").next_sibling.string.strip().replace(',', ''))
     total_members = int(soup.find("span", string="Members:").next_sibling.string.strip().replace(',', ''))
-    weighted_score = float(soup.find("span", string="Score:").next_sibling.next_sibling.string.strip())
+    weighted_score = soup.find("span", string="Score:").next_sibling.next_sibling.string.strip()
+    if weighted_score == "N/A":
+        weighted_score = float('nan')
+    else:
+        weighted_score = float(weighted_score)
 
     stats_page = get_html(anime_url + STATS_PAGE_URL, delay, max_retries, retry_pause)
     print(f"Processing data from {anime_url}.")
@@ -292,12 +306,13 @@ def export_to_csv(anime_info_list, filename):
         for anime in anime_info_list:
             writer.writerow([anime.title, anime.anime_type, anime.episodes, anime.status, anime.aired, anime.premiered,
                              anime.broadcast, anime.producers, anime.licensors, anime.studios, anime.source,
-                             anime.genres, anime.duration, anime.rating, anime.ranked, anime.popularity,
-                             anime.favorites, anime.total_members, anime.weighted_score, anime.scores_10,
-                             anime.scores_9, anime.scores_8, anime.scores_7, anime.scores_6, anime.scores_5,
-                             anime.scores_4, anime.scores_3, anime.scores_2, anime.scores_1, anime.members_watching,
-                             anime.members_completed, anime.members_on_hold, anime.members_dropped,
-                             anime.members_plan_to_watch])
+                             anime.genres, anime.duration, anime.rating,
+                             anime.ranked if not isnan(anime.ranked) else "N/A", anime.popularity, anime.favorites,
+                             anime.total_members, anime.weighted_score if not isnan(anime.weighted_score) else "N/A",
+                             anime.scores_10, anime.scores_9, anime.scores_8, anime.scores_7, anime.scores_6,
+                             anime.scores_5, anime.scores_4, anime.scores_3, anime.scores_2, anime.scores_1,
+                             anime.members_watching, anime.members_completed, anime.members_on_hold,
+                             anime.members_dropped, anime.members_plan_to_watch])
     print(f"Data saved to '{filename}'.")
 
 
