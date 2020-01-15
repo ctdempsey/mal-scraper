@@ -17,7 +17,8 @@ Follow the usage guide to start using the Python script.
 
 ##  Usage
 Command-line arguments and usage are listed below. Most of the search options correspond
-to equivalent options in MyAnimeList's own online search function.
+to equivalent options in MyAnimeList's own online search function. If a search option
+is not used, then whatever MyAnimeList's search function defaults to will be used instead.
 
 It is **highly recommended** that the `retry-pause` and `delay` options are left on
 default, or even increased, so as to reduce the strain on MyAnimeList's servers and
@@ -73,4 +74,4 @@ Request Options:
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
