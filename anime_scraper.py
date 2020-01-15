@@ -208,6 +208,9 @@ def get_anime_urls(**kwargs):
         if len(results) == 0:
             print("No new URLs found.")
             break
+        if results[0] in anime_urls:
+            print("Duplicate results detected.")
+            break
         anime_urls.extend(results)
         print(f"Found {len(anime_urls) - prev_urls} URLs.")
 
