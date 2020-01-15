@@ -1,15 +1,13 @@
 import argparse
 import csv
 import re
-from math import isnan
-
-import urllib3
-import certifi
 from dataclasses import dataclass
 from datetime import date
+from math import isnan
 from time import sleep
 
-import requests
+import certifi
+import urllib3
 from bs4 import BeautifulSoup
 
 MAL_ANIME_SEARCH_URL = "https://myanimelist.net/anime.php"
