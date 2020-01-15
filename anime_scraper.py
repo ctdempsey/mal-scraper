@@ -322,21 +322,36 @@ def export_to_csv(anime_info_list, filename):
 def get_args():
     parser = argparse.ArgumentParser(description="Download Anime info from MyAnimeList.")
     search_opts = parser.add_argument_group("Search Options")
-    search_opts.add_argument("-o", "--output", default=DEFAULT_OUTPUT_FILE)
-    search_opts.add_argument("-s", "--search")
-    search_opts.add_argument("--max", type=int, default=DEFAULT_MAX_SEARCH)
-    search_opts.add_argument("--type", choices=ANIME_TYPE_OPTS.keys())
-    search_opts.add_argument("--score", choices=ANIME_SCORE_OPTS.keys())
-    search_opts.add_argument("--status", choices=ANIME_STATUS_OPTS.keys())
-    search_opts.add_argument("--rating", choices=ANIME_RATING_OPTS.keys())
-    search_opts.add_argument("--start-date", type=lambda s: date.fromisoformat(s))
-    search_opts.add_argument("--end-date", type=lambda s: date.fromisoformat(s))
-    search_opts.add_argument("--order-by", choices=ANIME_SORT_BY_OPTS.keys())
-    search_opts.add_argument("--order", choices=ANIME_SORT_ORDER_OPTS.keys())
+    search_opts.add_argument("-o", "--output", default=DEFAULT_OUTPUT_FILE,
+                             help="name of file that results are saved to (default: %(default)s)")
+    search_opts.add_argument("-s", "--search",
+                             help="key words to search for using MAL's search algorithm")
+    search_opts.add_argument("--max", type=int, default=DEFAULT_MAX_SEARCH,
+                             help="maximum number of results returned (default: %(default)s) (0 for no limit)")
+    search_opts.add_argument("--type", choices=ANIME_TYPE_OPTS.keys(),
+                             help="anime type restriction")
+    search_opts.add_argument("--score", choices=ANIME_SCORE_OPTS.keys(),
+                             help="anime score restriction")
+    search_opts.add_argument("--status", choices=ANIME_STATUS_OPTS.keys(),
+                             help="anime status restriction")
+    search_opts.add_argument("--rating", choices=ANIME_RATING_OPTS.keys(),
+                             help="anime rating restriction")
+    search_opts.add_argument("--start-date", type=lambda s: date.fromisoformat(s),
+                             help="earliest anime start date (YYYY-MM-DD)")
+    search_opts.add_argument("--end-date", type=lambda s: date.fromisoformat(s),
+                             help="latest anime end date (YYYY-MM-DD)")
+    search_opts.add_argument("--order-by", choices=ANIME_SORT_BY_OPTS.keys(),
+                             help="what to order anime search results by")
+    search_opts.add_argument("--order", choices=ANIME_SORT_ORDER_OPTS.keys(),
+                             help="anime search result order")
     request_opts = parser.add_argument_group("Request Options")
-    request_opts.add_argument("--retries", type=int, default=DEFAULT_MAX_RETRIES)
-    request_opts.add_argument("--retry-pause", type=float, default=DEFAULT_RETRY_PAUSE)
-    request_opts.add_argument("--delay", type=int, default=DEFAULT_REQUEST_DELAY)
+    request_opts.add_argument("--retries", type=int, default=DEFAULT_MAX_RETRIES,
+                              help="maximum number of times to retry each web request (default: %(default)s)")
+    request_opts.add_argument("--retry-pause", type=float, default=DEFAULT_RETRY_PAUSE,
+                              help="how many seconds to pause before each web request (default: %(default)s)")
+    request_opts.add_argument("--delay", type=int, default=DEFAULT_REQUEST_DELAY,
+                              help="backoff factor applied between request retries, equal to "
+                                   "{DELAY}*(2**({no. of retries}-1)) seconds (default: %(default)s)")
     # parser.print_help()
     # parser.print_usage()
     args = parser.parse_args()
