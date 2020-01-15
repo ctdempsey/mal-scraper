@@ -2,6 +2,33 @@
 A Python web scraper for retrieving anime data from [MyAnimeList](https://myanimelist.net/).
 Scrapes all relevant data for each requested anime title and saves it as a CSV spreadsheet.
 
+Scraped data for each Anime includes:
+- Title
+- Type
+- No. of episodes
+- Status
+- Dates aired
+- Season premiered
+- Time and day of the week broadcast
+- Producers
+- Licensors
+- Studios
+- Source
+- Genres
+- Duration
+- Rating
+- Rank
+- Popularity rank
+- No. of Favorites
+- Total no. of Members
+- Weighted Score
+- No. of review scores for each score, from 10 to 1
+- No. of Members Watching
+- No. of Members Completed
+- No. of Members On-Hold
+- No. of Members Dropped
+- No. of Members Plan to Watch
+
 ## Installation
 
 Install the Python distribution and Python packages listed below in Prerequisites.
